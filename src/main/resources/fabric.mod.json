@@ -15,9 +15,6 @@
 	"icon": "assets/litematic-portal/icon.png",
 	"environment": "*",
 	"entrypoints": {
-		"main": [
-			"cokonut19.litematicportal.LitematicPortal"
-		],
 		"client": [
 			"cokonut19.litematicportal.LitematicPortalClient"
 		]
