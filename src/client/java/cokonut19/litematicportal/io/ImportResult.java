@@ -1,4 +1,6 @@
 package cokonut19.litematicportal.io;
 
-public record ImportResult(int successful, int failed) {
+import java.nio.file.Path;
+
+public record ImportResult(Path directory, int successful, int failed) {
 }
