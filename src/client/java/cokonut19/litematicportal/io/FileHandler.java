@@ -1,5 +1,6 @@
 package cokonut19.litematicportal.io;
 
+import net.minecraft.util.Util;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -10,6 +11,7 @@ import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.Executor;
 import java.util.stream.Stream;
 
 public class FileHandler {
@@ -110,5 +112,13 @@ public class FileHandler {
             }
         }
         return new ImportResult(targetDir, successful, failed);
+    }
+
+    public static void moveFilesAsync(Path sourceDir, Path targetDir) {
+        var IOExecutor = Util.ioPool();
+
+        IOExecutor.execute(() -> {
+                var searchResult = searchFiles(sourceDir, ".litematic");
+        });
     }
 }
