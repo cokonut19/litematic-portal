@@ -11,6 +11,7 @@ import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.concurrent.Executor;
 import java.util.stream.Stream;
 
@@ -36,18 +37,19 @@ public class FileHandler {
      *                               or reading files from the directory.
      */
     public static SearchResult searchFiles(Path sourceDir, String fileExtension) {
-        Objects.requireNonNull(sourceDir, "source path cannot be null");
-        Objects.requireNonNull(fileExtension, "file extension cannot be null");
+        if (sourceDir == null || fileExtension == null) {
+            return new SearchResult(null, null, 0, Optional.of(new NullArgsException()));
+        }
 
         if (Files.notExists(sourceDir)) {
             try {
                 Files.createDirectories(sourceDir);
             } catch (IOException e) {
-                throw new UncheckedIOException("Directory was not found and could not be created", e);
+                return new SearchResult(sourceDir,List.of(), 0, Optional.of(new FailedToCreateDirectoryException(e)));
             }
         }
         else if (Files.isRegularFile(sourceDir)) {
-            throw new IllegalArgumentException("path must be a directory");
+            return new SearchResult(sourceDir,List.of(), 0, Optional.of(new PathIsNotDirectoryException()));
         }
 
         List<Path> paths;
@@ -57,9 +59,9 @@ public class FileHandler {
                     .toList();
         }
         catch (IOException e) {
-            throw new UncheckedIOException("Failed to list files in " + sourceDir,e);
+            return new SearchResult(sourceDir, List.of(), 0,  Optional.of(e));
         }
-        return new SearchResult(sourceDir, paths, paths.size());    //file extension is lost but does not matter atm
+        return new SearchResult(sourceDir, paths, paths.size(), Optional.empty());    //file extension is lost but does not matter atm
     }
 
     /**
@@ -78,22 +80,23 @@ public class FileHandler {
      *                               or moving files.
      */
     public static ImportResult importFiles(SearchResult search, Path targetDir) {
-        Objects.requireNonNull(search, "search result cannot be null");
-        Objects.requireNonNull(targetDir, "target path cannot be null");
+        if (search == null || targetDir == null) {
+            return new ImportResult(null, 0,0, Optional.of(new NullArgsException()));
+        }
 
         if (search.paths().isEmpty()) {
-            return new ImportResult(targetDir, 0, 0);
+            return new ImportResult(targetDir, 0, 0, Optional.empty());
         }
 
         if (Files.notExists(targetDir)) {
             try {
                 Files.createDirectories(targetDir);
             } catch (IOException e) {
-                throw new UncheckedIOException("Directory was not found and could not be created", e);
+                return new ImportResult(targetDir, 0,0, Optional.of(new FailedToCreateDirectoryException(e)));
             }
         }
         else if (Files.isRegularFile(targetDir)) {
-            throw new IllegalArgumentException("path must be a directory");
+            return new ImportResult(targetDir, 0, 0, Optional.of(new PathIsNotDirectoryException()));
         }
 
         int successful = 0;
@@ -111,7 +114,7 @@ public class FileHandler {
                 failed++;
             }
         }
-        return new ImportResult(targetDir, successful, failed);
+        return new ImportResult(targetDir, successful, failed, Optional.empty());
     }
 
     public static void moveFilesAsync(Path sourceDir, Path targetDir) {
