@@ -16,20 +16,14 @@ import static cokonut19.litematicportal.util.ClientUtil.*;
 public class FileHandler {
     /**
      * Searches for files with the specified file extension in the given directory.
-     * If the directory does not exist, it attempts to create it. The method only
-     * searches at the top level of the directory (non-recursively).
      *
      * @param sourceDir the directory to search for files; must not be {@code null}.
-     *                  If the directory does not exist, it will be created.
-     * @param fileExtension the file extension to filter files; must not be {@code null}.
-     *                      The method matches files whose names end with this string.
-     * @return a {@code SearchResult} containing the directory searched, the list of paths
-     *         of matching files, and the count of matching files.
-     * @throws NullPointerException if {@code sourceDir} or {@code fileExtension} is {@code null}.
-     * @throws IllegalArgumentException if {@code sourceDir} points to a regular file
-     *                                  instead of a directory.
-     * @throws UncheckedIOException if an I/O error occurs while creating the directory
-     *                               or reading files from the directory.
+     *                  If the directory does not exist, it is created.
+     *                  If the path points to a regular file, a {@code PathIsNotDirectoryException} is returned in the result.
+     * @param fileExtension the file extension to filter files by; must not be {@code null}.
+     * @return a {@code SearchResult} containing the directory that was searched,
+     *         a list of paths matching the file extension, the total number of matching files,
+     *         and an optional exception if any error occurred during the operation.
      */
     public static SearchResult searchFiles(Path sourceDir, String fileExtension) {
         if (sourceDir == null || fileExtension == null) {
@@ -60,19 +54,18 @@ public class FileHandler {
     }
 
     /**
-     * Moves the files listed in the provided {@code SearchResult} to the specified target directory.
-     * If the target directory does not exist, it is created. Files in the target directory
-     * with the same name are replaced.
+     * Imports files from the specified search result into the target directory.
+     * The method moves all files returned in the {@code SearchResult.paths()} list to the
+     * provided target directory. If the target directory does not exist, it will attempt
+     * to create it. If any errors occur during the operation, they will be captured in the
+     * result's exception field.
      *
-     * @param search the search result containing the files to move; must not be {@code null}.
-     * @param targetDir the directory to move the files to; must not be {@code null}.
-     *                  It must represent a directory and not a file.
-     * @return an {@code ImportResult} containing the directory where files were moved, the count
-     *         of successfully moved files, and the count of files that failed to move.
-     * @throws NullPointerException if {@code search} or {@code targetDir} is {@code null}.
-     * @throws IllegalArgumentException if {@code targetDir} points to a file instead of a directory.
-     * @throws UncheckedIOException if an I/O error occurs while creating the target directory
-     *                               or moving files.
+     * @param search the {@code SearchResult} containing the list of files to import; must not be {@code null}.
+     * @param targetDir the target directory where the files will be moved; must not be {@code null}.
+     *                  If the path does not exist, it will attempt to create it. If it is a regular file,
+     *                  an exception will be returned in the result.
+     * @return an {@code ImportResult} containing the target directory, counts of successfully
+     *         and unsuccessfully imported files, and an optional exception if any error occurred.
      */
     public static ImportResult importFiles(SearchResult search, Path targetDir) {
         if (search == null || targetDir == null) {
@@ -113,11 +106,21 @@ public class FileHandler {
     }
 
     public static void moveFilesAsync(Path sourceDir, Path targetDir) {
-        CompletableFuture.supplyAsync(() -> searchFiles(sourceDir, ".litematic"), Util.ioPool())//IO thread of Minecraft
-                .thenApply(searchResult -> importFiles(searchResult, targetDir))
-                .thenAcceptAsync(importResult ->
-                        printToChat(importResult.toString()),
-                        getClient() //Main Thread of Minecraft
-                        );
+        var IOThread = Util.ioPool();
+        var MainThread = getClient();
+
+        CompletableFuture.supplyAsync(() -> {
+            var result = searchFiles(sourceDir, ".litematic");
+            if (result.exception().isPresent()) {
+                throw new RuntimeException(result.exception().get());
+            }
+            return result;
+            }, IOThread)
+                .thenApply(searchResult -> {
+                    return importFiles(searchResult, targetDir);
+                })
+                .thenAcceptAsync(importResult -> printToChat(importResult.toString()),
+                        MainThread
+                );
     }
 }
