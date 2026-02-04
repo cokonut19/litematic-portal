@@ -1,126 +1,114 @@
 package cokonut19.litematicportal.io;
 
 import net.minecraft.util.Util;
+
 import java.io.IOException;
 import java.io.UncheckedIOException;
-import java.nio.file.Path;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.util.Arrays;
 import java.util.List;
-import java.util.Optional;
+import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 import java.util.stream.Stream;
 
 import static cokonut19.litematicportal.util.ClientUtil.*;
 
 public class FileHandler {
-    /**
-     * Searches for files with the specified file extension in the given directory.
-     *
-     * @param sourceDir the directory to search for files; must not be {@code null}.
-     *                  If the directory does not exist, it is created.
-     *                  If the path points to a regular file, a {@code PathIsNotDirectoryException} is returned in the result.
-     * @param fileExtension the file extension to filter files by; must not be {@code null}.
-     * @return a {@code SearchResult} containing the directory that was searched,
-     *         a list of paths matching the file extension, the total number of matching files,
-     *         and an optional exception if any error occurred during the operation.
-     */
     public static SearchResult searchFiles(Path sourceDir, String fileExtension) {
-        if (sourceDir == null || fileExtension == null) {
-            return new SearchResult(null, null, 0, Optional.of(new NullArgsException()));
-        }
+        Objects.requireNonNull(sourceDir, "Source directory cannot be null!");
+        Objects.requireNonNull(fileExtension, "File extension cannot be null!"); // Should not happen, not user input
 
         if (Files.notExists(sourceDir)) {
             try {
                 Files.createDirectories(sourceDir);
             } catch (IOException e) {
-                return new SearchResult(sourceDir,List.of(), 0, Optional.of(new FailedToCreateDirectoryException(e)));
+                throw new FailedToCreateDirectoryException("Source directory could not be created", e);
             }
-        }
-        else if (Files.isRegularFile(sourceDir)) {
-            return new SearchResult(sourceDir,List.of(), 0, Optional.of(new PathIsNotDirectoryException()));
+        } else if (Files.isRegularFile(sourceDir)) {
+            throw new PathIsNotDirectoryException("Source path must be a directory");
         }
 
         List<Path> paths;
-        try (Stream<Path> walk = Files.walk(sourceDir, 1)) {
-            paths = walk.filter(Files::isRegularFile)
-                    .filter(p -> p.getFileName().toString().endsWith(fileExtension))
-                    .toList();
+        try (Stream<Path> walk = Files.walk(sourceDir, 2)) {
+            paths = walk.filter(Files::isRegularFile).filter(p -> p.getFileName().toString().endsWith(fileExtension)).toList();
+        } catch (IOException e) {
+            throw new UncheckedIOException("Failed to walk file tree", e); //error handled in moveFilesAsync
         }
-        catch (IOException e) {
-            return new SearchResult(sourceDir, List.of(), 0,  Optional.of(e));
-        }
-        return new SearchResult(sourceDir, paths, paths.size(), Optional.empty());    //file extension is lost but does not matter atm
+        return new SearchResult(sourceDir, paths, paths.size());    //file extension is lost but does not matter atm
     }
 
-    /**
-     * Imports files from the specified search result into the target directory.
-     * The method moves all files returned in the {@code SearchResult.paths()} list to the
-     * provided target directory. If the target directory does not exist, it will attempt
-     * to create it. If any errors occur during the operation, they will be captured in the
-     * result's exception field.
-     *
-     * @param search the {@code SearchResult} containing the list of files to import; must not be {@code null}.
-     * @param targetDir the target directory where the files will be moved; must not be {@code null}.
-     *                  If the path does not exist, it will attempt to create it. If it is a regular file,
-     *                  an exception will be returned in the result.
-     * @return an {@code ImportResult} containing the target directory, counts of successfully
-     *         and unsuccessfully imported files, and an optional exception if any error occurred.
-     */
+
     public static ImportResult importFiles(SearchResult search, Path targetDir) {
-        if (search == null || targetDir == null) {
-            return new ImportResult(null, 0,0, Optional.of(new NullArgsException()));
-        }
+        Objects.requireNonNull(search, "Search result cannot be null!"); // Should not happen, not user input
+        Objects.requireNonNull(targetDir, "Target directory cannot be null!");
 
         if (search.paths().isEmpty()) {
-            return new ImportResult(targetDir, 0, 0, Optional.empty());
+            return new ImportResult(targetDir, 0, 0, search);
         }
 
         if (Files.notExists(targetDir)) {
             try {
                 Files.createDirectories(targetDir);
             } catch (IOException e) {
-                return new ImportResult(targetDir, 0,0, Optional.of(new FailedToCreateDirectoryException(e)));
+                throw new FailedToCreateDirectoryException("Target directory could not be created", e);
             }
-        }
-        else if (Files.isRegularFile(targetDir)) {
-            return new ImportResult(targetDir, 0, 0, Optional.of(new PathIsNotDirectoryException()));
+        } else if (Files.isRegularFile(targetDir)) {
+            throw new PathIsNotDirectoryException("Target path must be a directory");
         }
 
         int successful = 0;
         int failed = 0;
-        for(Path p: search.paths()) {
+        for (Path p : search.paths()) {
+            // Redundant because searchFiles already handles this but still keeping it in for just in case/maintainablity
             if (p == null || Files.isDirectory(p)) {
                 failed++;
                 continue;
             }
             try {
-                Files.move(p, targetDir.resolve(p.getFileName()), StandardCopyOption.REPLACE_EXISTING);
+                Files.move(p, targetDir.resolve(p.getFileName()), StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING); //could apparently fail on some OS
                 successful++;
             } catch (IOException e) {
-                getLoggerWithID().error(e.getMessage());
+                getLoggerWithID().warn("%s failed. %s".formatted(p, e.getMessage()));
                 failed++;
             }
         }
-        return new ImportResult(targetDir, successful, failed, Optional.empty());
+        return new ImportResult(targetDir, successful, failed, search);
     }
 
+    //.thenAcceptAsync(importResult -> printToChat(importResult.toString()), mainThread)
     public static void moveFilesAsync(Path sourceDir, Path targetDir) {
-        var IOThread = Util.ioPool();
-        var MainThread = getClient();
+        var ioThread = Util.ioPool();
+        var mainThread = getClient();
 
-        CompletableFuture.supplyAsync(() -> {
-            var result = searchFiles(sourceDir, ".litematic");
-            if (result.exception().isPresent()) {
-                throw new RuntimeException(result.exception().get());
+        CompletableFuture.supplyAsync(() -> searchFiles(sourceDir, ".litematic"), ioThread).thenApply(searchResult -> importFiles(searchResult, targetDir)).whenCompleteAsync((importResult, throwable) -> {
+            //Exception often wrapped in CompletionException
+            Throwable cause = (throwable instanceof CompletionException) ? throwable.getCause() : throwable;
+            switch (cause) {
+                case null -> printToChat(importResult.toString());
+                case NullPointerException e -> {
+                    printToChat(e.getMessage());
+                    getLoggerWithID().error(Arrays.toString(e.getStackTrace()), e);
+                }
+                case FailedToCreateDirectoryException e -> {
+                    printToChat(e.getMessage());
+                    getLoggerWithID().error(Arrays.toString(e.getStackTrace()), e);
+                }
+                case PathIsNotDirectoryException e -> {
+                    printToChat(e.getMessage());
+                    getLoggerWithID().error(Arrays.toString(e.getStackTrace()), e);
+                }
+                case UncheckedIOException e -> {
+                    printToChat(e.getMessage());
+                    getLoggerWithID().error(Arrays.toString(e.getStackTrace()), e);
+                }
+                default -> {
+                    printToChat("Unknown error! " + cause.getMessage());
+                    getLoggerWithID().error(Arrays.toString(cause.getStackTrace()), cause);
+                }
             }
-            return result;
-            }, IOThread)
-                .thenApply(searchResult -> {
-                    return importFiles(searchResult, targetDir);
-                })
-                .thenAcceptAsync(importResult -> printToChat(importResult.toString()),
-                        MainThread
-                );
+        }, mainThread);
     }
 }

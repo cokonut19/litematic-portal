@@ -1,18 +1,14 @@
 package cokonut19.litematicportal.io;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.util.Objects;
 
-public class FailedToCreateDirectoryException extends IOException {
-    public FailedToCreateDirectoryException() {
-        super();
+public class FailedToCreateDirectoryException extends UncheckedIOException {
+    public FailedToCreateDirectoryException(IOException cause) {
+        super(Objects.requireNonNull(cause));
     }
-    public FailedToCreateDirectoryException(String message) {
-        super(message);
-    }
-    public FailedToCreateDirectoryException(Throwable cause) {
-        super(cause);
-    }
-    public FailedToCreateDirectoryException(String message, Throwable cause) {
-        super(message, cause);
+    public FailedToCreateDirectoryException(String message, IOException cause) {
+        super(message, Objects.requireNonNull(cause));
     }
 }
