@@ -1,24 +1,19 @@
 package cokonut19.litematicportal.io;
 
 import net.minecraft.util.Util;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Path;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 import java.util.List;
-import java.util.Objects;
 import java.util.Optional;
-import java.util.concurrent.Executor;
+import java.util.concurrent.CompletableFuture;
 import java.util.stream.Stream;
 
-public class FileHandler {
-    private static final String MOD_ID = "litematic-portal";
-    private static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
+import static cokonut19.litematicportal.util.ClientUtil.*;
 
+public class FileHandler {
     /**
      * Searches for files with the specified file extension in the given directory.
      * If the directory does not exist, it attempts to create it. The method only
@@ -110,7 +105,7 @@ public class FileHandler {
                 Files.move(p, targetDir.resolve(p.getFileName()), StandardCopyOption.REPLACE_EXISTING);
                 successful++;
             } catch (IOException e) {
-                LOGGER.error(e.getMessage());
+                getLoggerWithID().error(e.getMessage());
                 failed++;
             }
         }
@@ -118,10 +113,11 @@ public class FileHandler {
     }
 
     public static void moveFilesAsync(Path sourceDir, Path targetDir) {
-        var IOExecutor = Util.ioPool();
-
-        IOExecutor.execute(() -> {
-                var searchResult = searchFiles(sourceDir, ".litematic");
-        });
+        CompletableFuture.supplyAsync(() -> searchFiles(sourceDir, ".litematic"), Util.ioPool())//IO thread of Minecraft
+                .thenApply(searchResult -> importFiles(searchResult, targetDir))
+                .thenAcceptAsync(importResult ->
+                        printToChat(importResult.toString()),
+                        getClient() //Main Thread of Minecraft
+                        );
     }
 }

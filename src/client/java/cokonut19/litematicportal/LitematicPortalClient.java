@@ -14,11 +14,10 @@ import org.lwjgl.glfw.GLFW;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import static cokonut19.litematicportal.util.ClientUtil.*;
+
 public class LitematicPortalClient implements ClientModInitializer {
 	public static final String MOD_ID = "litematic-portal";
-	public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
-	public static final FabricLoader LOADER = FabricLoader.getInstance();
-	public static final Minecraft MINECRAFT = Minecraft.getInstance();
 
 	@Override
 	public void onInitializeClient() {
@@ -26,31 +25,8 @@ public class LitematicPortalClient implements ClientModInitializer {
 		var KEYBIND = addKeybind(CATEGORY);
 		ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> {
 			if (client.player != null) {
-				printToChat("Hello!");
+				printToChat(MOD_ID + ": Hello!");
 			}
 		});
-		}
-	public KeyMapping addKeybind(KeyMapping.Category CATEGORY) {
-		return KeyBindingHelper.registerKeyBinding(
-				new KeyMapping(
-						"key.%s.importFiles".formatted(MOD_ID),
-						InputConstants.Type.KEYSYM, // Keyboard Keybinding
-						GLFW.GLFW_KEY_J, //J-Key on QWERTY
-						CATEGORY
-				)
-		);
-	}
-
-	public KeyMapping.Category addKeyCategory(String name) {
-		return new KeyMapping.Category(
-				Identifier.fromNamespaceAndPath(MOD_ID, name)
-		);
-	}
-
-	public static void printToChat(String message) {
-		var MINECRAFT = Minecraft.getInstance();
-		if (MINECRAFT.player != null) {
-			MINECRAFT.player.displayClientMessage(Component.literal(message), false);
-		}
 	}
 }
