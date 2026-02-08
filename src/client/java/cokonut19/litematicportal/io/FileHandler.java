@@ -17,7 +17,7 @@ import java.util.stream.Stream;
 import static cokonut19.litematicportal.util.ClientUtil.*;
 
 public class FileHandler {
-    public static SearchResult searchFiles(Path sourceDir, String fileExtension) {
+    private static SearchResult searchFiles(Path sourceDir, String fileExtension) {
         Objects.requireNonNull(sourceDir, "Source directory cannot be null!");
         Objects.requireNonNull(fileExtension, "File extension cannot be null!"); // Should not happen, not user input
 
@@ -41,7 +41,7 @@ public class FileHandler {
     }
 
 
-    public static ImportResult importFiles(SearchResult search, Path targetDir) {
+    private static ImportResult importFiles(SearchResult search, Path targetDir) {
         Objects.requireNonNull(search, "Search result cannot be null!"); // Should not happen, not user input
         Objects.requireNonNull(targetDir, "Target directory cannot be null!");
 
@@ -87,7 +87,7 @@ public class FileHandler {
             //Exception often wrapped in CompletionException
             Throwable cause = (throwable instanceof CompletionException) ? throwable.getCause() : throwable;
             switch (cause) {
-                case null -> printToChat(importResult.toString());
+                case null -> printToChat(importResult.toString()); //TODO make cleaner
                 case NullPointerException e -> {
                     printToChat(e.getMessage());
                     getLoggerWithID().error(Arrays.toString(e.getStackTrace()), e);

@@ -12,8 +12,12 @@ import org.lwjgl.glfw.GLFW;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.nio.file.Path;
+
 public class ClientUtil {
     public static final String MOD_ID = "litematic-portal";
+    private static Path SOURCE_DIR;
+    private static Path TARGET_DIR;
 
     public static Logger getLoggerWithID() {
         return LoggerFactory.getLogger(MOD_ID);
@@ -27,6 +31,7 @@ public class ClientUtil {
     public static FabricLoader getFabricLoader () {
         return FabricLoader.getInstance();
     }
+
     public static void printToChat(String message) {
         if (getPlayerClient() != null) {
             getPlayerClient().displayClientMessage(Component.literal(message), false);
@@ -46,5 +51,18 @@ public class ClientUtil {
         return new KeyMapping.Category(
                 Identifier.fromNamespaceAndPath(MOD_ID, name)
         );
+    }
+
+    public static Path getTargetDir() {
+        return TARGET_DIR;
+    }
+    public static void setTargetDir(Path targetDir) {
+        TARGET_DIR = targetDir;
+    }
+    public static Path getSourceDir() {
+        return SOURCE_DIR;
+    }
+    public static void setSourceDir(Path sourceDir) {
+        SOURCE_DIR = sourceDir;
     }
 }
