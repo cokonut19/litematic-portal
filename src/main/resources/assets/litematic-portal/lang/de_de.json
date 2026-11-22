@@ -1,0 +1,8 @@
+{
+	"key.category.litematic-portal.main": "Litematic Portal",
+	"key.litematic-portal.import": "Schematics importieren",
+	"message.litematic-portal.done": "%s Schematic(s) in den Schematics-Ordner verschoben.",
+	"message.litematic-portal.partial": "%s Schematic(s) verschoben, %s konnten nicht verschoben werden (siehe Log).",
+	"message.litematic-portal.none": "Keine .litematic-Dateien in %s gefunden.",
+	"message.litematic-portal.error": "%s konnte nicht gelesen werden (siehe Log)."
+}
