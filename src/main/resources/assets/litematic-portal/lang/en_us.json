@@ -1,0 +1,9 @@
+{
+	"key.category.litematic-portal.main": "Litematic Portal",
+	"key.litematic-portal.import": "Import schematics",
+	"message.litematic-portal.done": "Moved %s schematic(s) to the schematics folder.",
+	"message.litematic-portal.partial": "Moved %s schematic(s), %s could not be moved (see log).",
+	"message.litematic-portal.none": "No .litematic files found in %s.",
+	"message.litematic-portal.missing": "Folder %s does not exist.",
+	"message.litematic-portal.error": "Could not read %s (see log)."
+}

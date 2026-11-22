@@ -3,33 +3,28 @@
 	"id": "litematic-portal",
 	"version": "${version}",
 	"name": "Litematic Portal",
-	"description": "This is an example description! Tell everyone what your mod is about!",
+	"description": "Press a key to move .litematic files from your Downloads folder into the Litematica schematics folder.",
 	"authors": [
-		"Me!"
+		"Constantin"
 	],
 	"contact": {
-		"homepage": "https://fabricmc.net/",
-		"sources": "https://github.com/FabricMC/fabric-example-mod"
+		"sources": "https://github.com/cokonut19/litematic-portal"
 	},
 	"license": "CC0-1.0",
 	"icon": "assets/litematic-portal/icon.png",
-	"environment": "*",
+	"environment": "client",
 	"entrypoints": {
 		"client": [
 			"cokonut19.litematicportal.LitematicPortalClient"
 		]
 	},
-	"mixins": [
-		"litematic-portal.mixins.json",
-		{
-			"config": "litematic-portal.client.mixins.json",
-			"environment": "client"
-		}
-	],
 	"depends": {
-		"fabricloader": ">=0.18.4",
-		"minecraft": "~1.21.11",
-		"java": ">=21",
+		"fabricloader": ">=0.20.1",
+		"minecraft": "~26.3",
+		"java": ">=25",
 		"fabric-api": "*"
+	},
+	"recommends": {
+		"litematica": "*"
 	}
 }
