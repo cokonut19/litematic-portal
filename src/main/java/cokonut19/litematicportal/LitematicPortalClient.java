@@ -16,6 +16,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.util.concurrent.CompletableFuture;
 
@@ -54,11 +55,15 @@ public class LitematicPortalClient implements ClientModInitializer {
 
 		CompletableFuture
 				.supplyAsync(() -> importSafely(source, target), Util.ioPool())
-				.thenAcceptAsync(message -> {
+				.handleAsync((message, error) -> {
 					importRunning = false;
-					if (client.player != null) {
-						client.player.sendSystemMessage(message);
+					if (error != null) {
+						LOGGER.error("Import crashed", error);
 					}
+					if (client.player != null) {
+						client.player.sendSystemMessage(error == null ? message : errorMessage(source));
+					}
+					return null;
 				}, client);
 	}
 
@@ -72,9 +77,15 @@ public class LitematicPortalClient implements ClientModInitializer {
 				return Component.translatable("message.litematic-portal.partial", result.moved(), result.failed());
 			}
 			return Component.translatable("message.litematic-portal.done", result.moved());
+		} catch (NoSuchFileException e) {
+			return Component.translatable("message.litematic-portal.missing", source.toString());
 		} catch (IOException | RuntimeException e) {
 			LOGGER.error("Import from {} failed", source, e);
-			return Component.translatable("message.litematic-portal.error", source.toString());
+			return errorMessage(source);
 		}
+	}
+
+	private static Component errorMessage(Path source) {
+		return Component.translatable("message.litematic-portal.error", source.toString());
 	}
 }
