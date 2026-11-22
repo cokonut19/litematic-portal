@@ -72,7 +72,7 @@ public class LitematicPortalClient implements ClientModInitializer {
 				return Component.translatable("message.litematic-portal.partial", result.moved(), result.failed());
 			}
 			return Component.translatable("message.litematic-portal.done", result.moved());
-		} catch (IOException e) {
+		} catch (IOException | RuntimeException e) {
 			LOGGER.error("Import from {} failed", source, e);
 			return Component.translatable("message.litematic-portal.error", source.toString());
 		}
